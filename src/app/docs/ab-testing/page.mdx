@@ -1,0 +1,141 @@
+# A/B Testing
+
+PromptPilot's A/B Testing tool helps you optimize your prompts specifically for Google's Gemini family of models. This specialized testing interface enables you to:
+
+- Generate multiple variations of a single prompt using different Gemini models
+- Compare the same prompt across the entire Gemini model family
+- Automatically evaluate the performance of different versions
+- Save the best-performing variations to your version history
+- Optionally compare Gemini models with other leading LLMs
+- Estimate token usage and costs in real-time
+
+## Dual Input System
+
+The testing suite uses a dual input system that mimics real chatbot interactions:
+
+- **Base Prompt Box**: For your instructions or system prompt template
+- **User Context Box**: For specific user queries, data, or information
+
+This separation allows you to:
+1. Maintain consistent instructions (base prompt) while testing with different user inputs
+2. See how the models respond to the same user query with different instruction variations
+3. Create more realistic testing scenarios that match how chatbots are used in production
+
+## How to Use the A/B Testing Tool
+
+### Multi-Variant Testing with Gemini
+
+1. **Enter your base prompt** in the base prompt box (instructions/template)
+2. **Enter your user context** in the user context box (specific data/query)
+3. Select the number of variations you want to generate (3-5)
+4. For each variation slot, select a specific Gemini model:
+   - Gemini 1.5 Pro (most capable)
+   - Gemini 1.5 Flash (faster responses)
+   - Gemini Pro (balanced)
+   - Gemini Pro Vision (image capabilities)
+   - Gemini 1.0 Pro (legacy)
+5. Toggle the token estimator to see projected token usage and costs
+6. Click "Generate Variations"
+7. Review the different responses to your user input
+8. Click "Auto-Evaluate Results" to get objective metrics for each version
+9. Save your favorite variation to version control
+
+### Gemini Model Comparison
+
+1. **Enter your base prompt** in the base prompt box (instructions/template)
+2. **Enter your user context** in the user context box (specific data/query)
+3. The tool will automatically select the primary Gemini models for comparison
+4. Review the real-time token and cost estimates for each model
+5. Click "Compare Across Models"
+6. Review how different Gemini models (and optionally GPT-4o for comparison) respond to the same user input
+7. Use "Auto-Evaluate Results" to assess performance across models
+8. Save the best-performing model output to version control
+
+## Evaluation Metrics
+
+When you use the Auto-Evaluate feature, we assess each variation on multiple dimensions:
+
+- **Accuracy**: How well the prompt achieves its intended purpose
+- **Creativity**: The uniqueness and originality of the approach
+- **Tone**: The appropriate voice and style for the target audience
+- **Coherence**: How well-structured and logical the prompt is
+- **Persuasiveness**: How effectively it encourages the desired response
+
+## Gemini Model Reference
+
+### Gemini 1.5 Pro
+The most capable model in the Gemini family, with enhanced reasoning, complex instruction following, and multimodal capabilities. Best for complex tasks requiring deep understanding and reasoning.
+
+### Gemini 1.5 Flash
+A faster version of Gemini 1.5, optimized for speed while maintaining strong capabilities. Ideal for interactive applications and scenarios where response time is important.
+
+### Gemini Pro
+The balanced model in the Gemini family, offering a good combination of capabilities and performance. Suitable for most general-purpose applications.
+
+### Gemini Pro Vision
+Specialized for multimodal inputs, particularly good at understanding and reasoning about images alongside text. Use this when your prompts involve visual elements.
+
+### Gemini 1.0 Pro
+The legacy model from the first generation of Gemini. Included for comparison with newer models.
+
+## Real-Time Token and Cost Estimation
+
+The A/B testing component includes a token estimator that provides real-time feedback on:
+
+- **Input Token Count**: The number of tokens in your base prompt and user context combined
+- **Estimated Output Tokens**: Projected token usage for the model's response
+- **Cost Breakdown**: Separate costs for input and output tokens
+- **Total Cost**: Combined cost estimate for the complete interaction
+
+This real-time feedback helps you:
+
+1. Optimize your prompts for cost efficiency
+2. Understand the token usage differences between models
+3. Make informed decisions about model selection
+4. Predict budget requirements for production deployment
+
+The token estimator updates as you type, simulating how a real chatbot interaction would consume tokens, giving you immediate feedback on the efficiency of your prompts.
+
+## Tips for Effective Gemini Model Testing
+
+1. **Start with a clear goal** for what you want your prompt to achieve with Gemini
+2. **Test different Gemini models** to find which works best for your specific use case
+3. **Pay attention to parameter differences** between models (context windows, capabilities)
+4. **Save successful variations** to build your prompt library optimized for Gemini
+5. **Iterate on winning prompts** with model-specific optimizations
+6. **Use the token estimator** to optimize for cost efficiency
+7. **Separate instructions and user input** for clearer testing scenarios
+
+## Integrating with Version Control
+
+Any prompt variation you find effective can be saved directly to the version control system. This allows you to:
+
+- Track the evolution of your prompts over time
+- Compare performance between versions
+- Build on successful approaches
+- Share effective prompts with your team
+
+## Example Use Case
+
+**Scenario**: Creating a customer support chatbot for electronics products
+
+**Base Prompt (Instructions)**:
+```
+You are a helpful customer support assistant for Acme Electronics. 
+Respond in a friendly but professional tone. 
+Include relevant product information when possible.
+If you don't know the answer, suggest contacting a human representative.
+```
+
+**User Context (User Query)**:
+```
+My new AcmePhone 12 won't turn on. I've tried charging it overnight but the screen stays black. What should I do?
+```
+
+In this example:
+- The base prompt contains the chatbot's personality and instructions
+- The user context contains the specific query to respond to
+- Each model or variation will generate different responses to this same query
+- The token estimator will show how efficiently each model handles this interaction
+
+By separating instructions and user input, you can clearly see how different models or prompt variations handle the same user query, just like in a real chatbot application.

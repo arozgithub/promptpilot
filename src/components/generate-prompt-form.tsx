@@ -53,7 +53,7 @@ export function GeneratePromptForm({
   const [generatedPrompt, setGeneratedPrompt] = useState<string | null>(null);
   const [uploadedFiles, setUploadedFiles] = useState<File[]>([]);
   const { toast } = useToast();
-  const { prompts } = useStorage();
+  const { prompts, versions } = useStorage();
 
   const form = useForm<z.infer<typeof formSchema>>({
     resolver: zodResolver(formSchema),
@@ -108,7 +108,22 @@ export function GeneratePromptForm({
       } else if (result.data) {
         setGeneratedPrompt(result.data);
         
-        // Save to local storage
+        // Create new prompt group for generated prompt
+        const groupName = values.role || values.context || `Generated Prompt ${new Date().toLocaleDateString()}`;
+        const group = await versions.createPromptGroup(
+          groupName,
+          result.data,
+          values.context || 'Generated prompt based on provided requirements'
+        );
+        
+        if (group) {
+          toast({
+            title: 'Prompt Generated',
+            description: `Created new prompt group "${group.name}"`,
+          });
+        }
+        
+        // Also save to legacy prompt storage for backward compatibility
         const promptData: Omit<PromptData, 'id' | 'timestamp'> = {
           originalPrompt: result.data,
           improvedPrompt: result.data,

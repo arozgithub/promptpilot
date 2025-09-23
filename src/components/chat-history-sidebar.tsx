@@ -7,6 +7,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Separator } from '@/components/ui/separator';
 import { Input } from '@/components/ui/input';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { 
   MessageSquare, 
   Plus, 
@@ -21,11 +22,17 @@ import {
   Check, 
   X,
   MoreVertical,
-  MessageCircle
+  MessageCircle,
+  GitBranch,
+  Star
 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
+import { useStorage } from '@/contexts/storage-context';
 import { Logo } from '@/components/logo';
 import { ThemeToggle } from '@/components/theme-toggle';
+import { PromptVersionList } from './prompt-version-list';
+import { CreatePromptDialog } from './create-prompt-dialog';
+import { PromptGroup, PromptVersion } from '@/lib/storage';
 import Link from 'next/link';
 
 interface ChatSession {
@@ -49,6 +56,7 @@ interface ChatHistorySidebarProps {
   onStressTestClick: () => void;
   onClearClick: () => void;
   onHideSidebar: () => void;
+  onVersionSelect?: (version: PromptVersion, group: PromptGroup) => void;
   refreshTrigger?: number; // Add refresh trigger prop
 }
 
@@ -63,13 +71,24 @@ export function ChatHistorySidebar({
   onStressTestClick,
   onClearClick,
   onHideSidebar,
+  onVersionSelect,
   refreshTrigger
 }: ChatHistorySidebarProps) {
   const [sessions, setSessions] = useState<ChatSession[]>([]);
   const [editingSession, setEditingSession] = useState<string | null>(null);
   const [editTitle, setEditTitle] = useState('');
   const [isCreatingNewChat, setIsCreatingNewChat] = useState(false);
+  const [createPromptOpen, setCreatePromptOpen] = useState(false);
+  const [selectedVersion, setSelectedVersion] = useState<PromptVersion | null>(null);
+  const [selectedGroup, setSelectedGroup] = useState<PromptGroup | null>(null);
   const { toast } = useToast();
+  const { versions } = useStorage();
+
+  console.log('Sidebar render - versions state:', { 
+    loading: versions?.loading, 
+    groupsCount: versions?.promptGroups?.length,
+    createPromptOpen 
+  });
 
   // Load sessions from localStorage
   useEffect(() => {
@@ -289,6 +308,30 @@ export function ChatHistorySidebar({
     }
   };
 
+  // Version management handlers
+  const handleVersionSelect = (version: PromptVersion) => {
+    const group = versions.promptGroups.find(g => g.id === version.promptId);
+    if (group) {
+      setSelectedVersion(version);
+      setSelectedGroup(group);
+      onVersionSelect?.(version, group);
+      toast({
+        title: "Version Selected",
+        description: `${group.name} - ${version.name} ready to use.`,
+      });
+    }
+  };
+
+  const handleVersionEdit = (version: PromptVersion) => {
+    // For now, just select the version. In future, this could open an edit modal
+    handleVersionSelect(version);
+  };
+
+  const handleGroupEdit = (group: PromptGroup) => {
+    // Future: Open group settings modal
+    setSelectedGroup(group);
+  };
+
   return (
     <div className="w-full bg-background border-r border-border/50 flex flex-col h-full overflow-hidden">
       {/* Header - Close Button and Logo */}
@@ -366,119 +409,200 @@ export function ChatHistorySidebar({
         </Button>
       </div>
 
-      {/* Chat History */}
-      <ScrollArea className="flex-1 min-h-0">
-        <div className="p-1.5">
-          {sessions.length === 0 ? (
-            <div className="text-center py-6 text-muted-foreground">
-              <MessageCircle className="h-8 w-8 mx-auto mb-3 opacity-50" />
-              <p className="text-xs font-medium mb-1">No conversations yet</p>
-              <p className="text-[10px]">Start a new chat to see it here</p>
-            </div>
-          ) : (
-            <div className="space-y-1">
-              {sessions.map((session) => (
-                <div
-                  key={session.id}
-                  className={`group relative rounded-lg transition-all duration-200 cursor-pointer ${
-                    currentSessionId === session.id 
-                      ? 'bg-primary/10 border border-primary/20' 
-                      : 'hover:bg-muted/50'
-                  }`}
-                  onClick={() => onSessionSelect(session.id)}
-                >
-                  <div className="p-2">
-                    {editingSession === session.id ? (
-                      <div className="space-y-2">
-                        <Input
-                          value={editTitle}
-                          onChange={(e) => setEditTitle(e.target.value)}
-                          className="h-8 text-sm font-medium"
-                          autoFocus
-                          onKeyDown={(e) => {
-                            if (e.key === 'Enter') handleSaveEdit();
-                            if (e.key === 'Escape') handleCancelEdit();
-                          }}
-                          onBlur={handleSaveEdit}
-                        />
-                        <div className="flex gap-1">
-                          <Button
-                            size="sm"
-                            onClick={handleSaveEdit}
-                            className="h-6 px-2 text-xs"
-                          >
-                            <Check className="h-3 w-3" />
-                          </Button>
-                          <Button
-                            size="sm"
-                            variant="outline"
-                            onClick={handleCancelEdit}
-                            className="h-6 px-2 text-xs"
-                          >
-                            <X className="h-3 w-3" />
-                          </Button>
-                        </div>
-                      </div>
-                    ) : (
-                      <div className="flex items-start justify-between">
-                        <div className="flex-1 min-w-0">
-                          <h3 
-                            className="text-xs font-medium text-foreground mb-1 break-words leading-tight"
-                            title={session.title}
-                          >
-                            {session.title}
-                          </h3>
-                          <div className="flex items-center gap-1.5">
-                            {session.testCaseTag && (
-                              <Badge 
-                                variant="secondary" 
-                                className="text-[10px] h-4 px-1.5 font-medium"
-                              >
-                                {session.testCaseTag}
-                              </Badge>
-                            )}
-                            {session.systemPrompt && !session.testCaseTag && (
-                              <Badge variant="outline" className="text-[10px] h-4 px-1.5">
-                                Custom
-                              </Badge>
-                            )}
-                          </div>
-                        </div>
-                        
-                        {/* Action Buttons */}
-                        <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity ml-2">
-                          <Button
-                            size="sm"
-                            variant="ghost"
-                            className="h-6 w-6 p-0 hover:bg-muted"
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              handleStartEdit(session);
-                            }}
-                          >
-                            <Edit3 className="h-3 w-3" />
-                          </Button>
-                          <Button
-                            size="sm"
-                            variant="ghost"
-                            className="h-6 w-6 p-0 hover:bg-destructive/10 text-destructive hover:text-destructive"
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              handleDeleteSession(session.id);
-                            }}
-                          >
-                            <Trash2 className="h-3 w-3" />
-                          </Button>
-                        </div>
-                      </div>
-                    )}
+      {/* Main Content - Tabs */}
+      <div className="flex-1 min-h-0 px-2 pt-2">
+        <Tabs defaultValue="chats" className="h-full flex flex-col">
+          <TabsList className="grid w-full grid-cols-2 mb-2">
+            <TabsTrigger value="chats" className="text-xs">
+              <MessageCircle className="h-4 w-4 mr-1" />
+              Chats
+            </TabsTrigger>
+            <TabsTrigger value="prompts" className="text-xs">
+              <GitBranch className="h-4 w-4 mr-1" />
+              Prompts
+            </TabsTrigger>
+          </TabsList>
+          
+          {/* Chat History Tab */}
+          <TabsContent value="chats" className="flex-1 mt-0 min-h-0">
+            <ScrollArea className="h-full">
+              <div className="space-y-1 pr-1">
+                {sessions.length === 0 ? (
+                  <div className="text-center py-6 text-muted-foreground">
+                    <MessageCircle className="h-8 w-8 mx-auto mb-3 opacity-50" />
+                    <p className="text-xs font-medium mb-1">No conversations yet</p>
+                    <p className="text-[10px]">Start a new chat to see it here</p>
                   </div>
-                </div>
-              ))}
+                ) : (
+                  sessions.map((session) => (
+                    <div
+                      key={session.id}
+                      className={`group relative rounded-lg transition-all duration-200 cursor-pointer ${
+                        currentSessionId === session.id 
+                          ? 'bg-primary/10 border border-primary/20' 
+                          : 'hover:bg-muted/50'
+                      }`}
+                      onClick={() => onSessionSelect(session.id)}
+                    >
+                      <div className="p-2">
+                        {editingSession === session.id ? (
+                          <div className="space-y-2">
+                            <Input
+                              value={editTitle}
+                              onChange={(e) => setEditTitle(e.target.value)}
+                              className="h-8 text-sm font-medium"
+                              autoFocus
+                              onKeyDown={(e) => {
+                                if (e.key === 'Enter') handleSaveEdit();
+                                if (e.key === 'Escape') handleCancelEdit();
+                              }}
+                              onBlur={handleSaveEdit}
+                            />
+                            <div className="flex gap-1">
+                              <Button
+                                size="sm"
+                                onClick={handleSaveEdit}
+                                className="h-6 px-2 text-xs"
+                              >
+                                <Check className="h-3 w-3" />
+                              </Button>
+                              <Button
+                                size="sm"
+                                variant="outline"
+                                onClick={handleCancelEdit}
+                                className="h-6 px-2 text-xs"
+                              >
+                                <X className="h-3 w-3" />
+                              </Button>
+                            </div>
+                          </div>
+                        ) : (
+                          <div className="flex items-start justify-between">
+                            <div className="flex-1 min-w-0">
+                              <h3 
+                                className="text-xs font-medium text-foreground mb-1 break-words leading-tight"
+                                title={session.title}
+                              >
+                                {session.title}
+                              </h3>
+                              <div className="flex items-center gap-1.5">
+                                {session.testCaseTag && (
+                                  <Badge 
+                                    variant="secondary" 
+                                    className="text-[10px] h-4 px-1.5 font-medium"
+                                  >
+                                    {session.testCaseTag}
+                                  </Badge>
+                                )}
+                                {session.systemPrompt && !session.testCaseTag && (
+                                  <Badge variant="outline" className="text-[10px] h-4 px-1.5">
+                                    Custom
+                                  </Badge>
+                                )}
+                              </div>
+                            </div>
+                            
+                            {/* Action Buttons */}
+                            <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity ml-2">
+                              <Button
+                                size="sm"
+                                variant="ghost"
+                                className="h-6 w-6 p-0 hover:bg-muted"
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  handleStartEdit(session);
+                                }}
+                              >
+                                <Edit3 className="h-3 w-3" />
+                              </Button>
+                              <Button
+                                size="sm"
+                                variant="ghost"
+                                className="h-6 w-6 p-0 hover:bg-destructive/10 text-destructive hover:text-destructive"
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  handleDeleteSession(session.id);
+                                }}
+                              >
+                                <Trash2 className="h-3 w-3" />
+                              </Button>
+                            </div>
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  ))
+                )}
+              </div>
+            </ScrollArea>
+          </TabsContent>
+
+          {/* Prompt Versions Tab */}
+          <TabsContent value="prompts" className="flex-1 mt-0 min-h-0">
+            <div className="mb-3">
+              <Button
+                size="sm"
+                onClick={() => {
+                  console.log('Create New Prompt clicked');
+                  setCreatePromptOpen(true);
+                }}
+                className="w-full h-8 text-xs gap-2"
+                variant="outline"
+              >
+                <Plus className="h-3 w-3" />
+                Create New Prompt
+              </Button>
             </div>
-          )}
-        </div>
-      </ScrollArea>
+            <ScrollArea className="h-full">
+              <div className="space-y-3 pr-1">
+                {versions.loading ? (
+                  <div className="flex items-center justify-center py-8">
+                    <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
+                  </div>
+                ) : versions.promptGroups.length === 0 ? (
+                  <div className="text-center py-6 text-muted-foreground">
+                    <GitBranch className="h-8 w-8 mx-auto mb-3 opacity-50" />
+                    <p className="text-xs font-medium mb-1">No prompt versions</p>
+                    <p className="text-[10px] mb-4">Create prompts to manage versions here</p>
+                    <div className="space-y-2">
+                      <Button 
+                        size="sm" 
+                        className="gap-2 text-xs h-7 w-full"
+                        onClick={(e) => {
+                          e.preventDefault();
+                          e.stopPropagation();
+                          console.log('Create First Prompt clicked - event object:', e);
+                          alert('Create First Prompt clicked!'); // Temporary test
+                          console.log('Setting createPromptOpen to true');
+                          setCreatePromptOpen(true);
+                          console.log('createPromptOpen state should now be true');
+                        }}
+                      >
+                        <Plus className="h-3 w-3" />
+                        Create First Prompt
+                      </Button>
+                      <p className="text-[8px] text-muted-foreground">
+                        State: {createPromptOpen ? 'OPEN' : 'CLOSED'}
+                      </p>
+                    </div>
+                  </div>
+                ) : (
+                  versions.promptGroups.map((group) => (
+                    <PromptVersionList
+                      key={group.id}
+                      group={group}
+                      onVersionSelect={handleVersionSelect}
+                      onVersionEdit={handleVersionEdit}
+                      onGroupEdit={handleGroupEdit}
+                      selectedVersionId={selectedVersion?.id}
+                    />
+                  ))
+                )}
+              </div>
+            </ScrollArea>
+          </TabsContent>
+        </Tabs>
+      </div>
 
       {/* Footer Actions */}
       <div className="p-1.5 border-t border-border/50 flex-shrink-0 space-y-1">
@@ -498,6 +622,12 @@ export function ChatHistorySidebar({
           Clear Chat
         </Button>
       </div>
+      
+      {/* Create Prompt Dialog */}
+      <CreatePromptDialog
+        open={createPromptOpen}
+        onOpenChange={setCreatePromptOpen}
+      />
     </div>
   );
 }

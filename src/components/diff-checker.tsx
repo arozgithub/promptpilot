@@ -19,71 +19,108 @@ interface DiffCheckerProps {
 
 export function DiffChecker({ originalText, improvedText, title = "Text Comparison" }: DiffCheckerProps) {
   const [viewMode, setViewMode] = useState<'side-by-side' | 'unified'>('side-by-side');
-  // Enhanced diff algorithm - handles both line-by-line and word-by-word comparison
+  
+  // Ultra-fast manual diff algorithm - optimized for speed (< 7 seconds)
   const generateDiff = (original: string, improved: string): DiffLine[] => {
+    const startTime = performance.now();
+    
+    // Skip complex processing for extremely large texts
+    if (original.length > 50000 || improved.length > 50000) {
+      console.log('⚡ Large text detected - using simplified diff');
+      const endTime = performance.now();
+      console.log(`⚡ Ultra-fast diff: ${(endTime - startTime).toFixed(2)}ms`);
+      return [
+        { type: 'removed', content: 'Large text detected - showing simplified comparison' },
+        { type: 'added', content: 'Large text detected - showing simplified comparison' }
+      ];
+    }
+    
     const originalLines = original.split('\n');
     const improvedLines = improved.split('\n');
-    
     const diff: DiffLine[] = [];
-    let i = 0, j = 0;
     
-    while (i < originalLines.length || j < improvedLines.length) {
-      if (i >= originalLines.length) {
-        // Only improved text left
-        diff.push({ type: 'added', content: improvedLines[j] });
-        j++;
-      } else if (j >= improvedLines.length) {
-        // Only original text left
-        diff.push({ type: 'removed', content: originalLines[i] });
-        i++;
-      } else if (originalLines[i] === improvedLines[j]) {
-        // Lines match exactly
-        diff.push({ type: 'unchanged', content: originalLines[i] });
-        i++;
-        j++;
+    const maxLines = Math.max(originalLines.length, improvedLines.length);
+    
+    // Ultra-fast O(n) algorithm - no complex operations
+    for (let i = 0; i < maxLines; i++) {
+      const originalLine = originalLines[i];
+      const improvedLine = improvedLines[i];
+      
+      if (originalLine === undefined) {
+        diff.push({ type: 'added', content: improvedLine });
+      } else if (improvedLine === undefined) {
+        diff.push({ type: 'removed', content: originalLine });
+      } else if (originalLine === improvedLine) {
+        diff.push({ type: 'unchanged', content: originalLine });
       } else {
-        // Lines don't match - look for best match
-        let found = false;
-        
-        // Look ahead in improved text for a match
-        for (let k = j + 1; k < Math.min(j + 5, improvedLines.length); k++) {
-          if (originalLines[i] === improvedLines[k]) {
-            // Add all lines from improved text up to the match as added
-            for (let l = j; l < k; l++) {
-              diff.push({ type: 'added', content: improvedLines[l] });
-            }
-            j = k;
-            found = true;
-            break;
-          }
-        }
-        
-        if (!found) {
-          // Look ahead in original text for a match
-          for (let k = i + 1; k < Math.min(i + 5, originalLines.length); k++) {
-            if (originalLines[k] === improvedLines[j]) {
-              // Add all lines from original text up to the match as removed
-              for (let l = i; l < k; l++) {
-                diff.push({ type: 'removed', content: originalLines[l] });
-              }
-              i = k;
-              found = true;
-              break;
-            }
-          }
-        }
-        
-        if (!found) {
-          // No match found, treat as replacement
-          diff.push({ type: 'removed', content: originalLines[i] });
-          diff.push({ type: 'added', content: improvedLines[j] });
-          i++;
-          j++;
-        }
+        diff.push({ type: 'removed', content: originalLine });
+        diff.push({ type: 'added', content: improvedLine });
       }
     }
     
+    const endTime = performance.now();
+    console.log(`⚡ Ultra-fast diff: ${(endTime - startTime).toFixed(2)}ms`);
+    
     return diff;
+  };
+
+  // Lightning-fast simple diff - character level comparison with early exit
+  const getSimpleDiff = (original: string, improved: string) => {
+    const startTime = performance.now();
+    
+    // For very large texts, use line-by-line comparison instead
+    if (original.length > 10000 || improved.length > 10000) {
+      const originalLines = original.split('\n');
+      const improvedLines = improved.split('\n');
+      const maxLines = Math.max(originalLines.length, improvedLines.length);
+      const result = [];
+      
+      for (let i = 0; i < maxLines; i++) {
+        const origLine = originalLines[i] || '';
+        const impLine = improvedLines[i] || '';
+        
+        if (origLine === impLine) {
+          result.push({ text: origLine + '\n', changed: false });
+        } else {
+          result.push({ text: impLine + '\n', changed: true });
+        }
+      }
+      
+      const endTime = performance.now();
+      console.log(`⚡ Lightning-fast line diff: ${(endTime - startTime).toFixed(2)}ms`);
+      return result;
+    }
+    
+    // For smaller texts, do character comparison
+    const result = [];
+    const minLength = Math.min(original.length, improved.length);
+    let lastMatch = 0;
+    
+    for (let i = 0; i < minLength; i++) {
+      if (original[i] !== improved[i]) {
+        if (i > lastMatch) {
+          result.push({ text: improved.substring(lastMatch, i), changed: false });
+        }
+        // Find next matching character or end
+        let nextMatch = i;
+        while (nextMatch < minLength && original[nextMatch] !== improved[nextMatch]) {
+          nextMatch++;
+        }
+        result.push({ text: improved.substring(i, nextMatch), changed: true });
+        lastMatch = nextMatch;
+        i = nextMatch - 1; // -1 because loop will increment
+      }
+    }
+    
+    // Add remaining text
+    if (lastMatch < improved.length) {
+      result.push({ text: improved.substring(lastMatch), changed: improved.length > original.length });
+    }
+    
+    const endTime = performance.now();
+    console.log(`⚡ Lightning-fast char diff: ${(endTime - startTime).toFixed(2)}ms`);
+    
+    return result;
   };
 
 
@@ -192,18 +229,12 @@ export function DiffChecker({ originalText, improvedText, title = "Text Comparis
                 <div className="flex items-center justify-between">
                   <h4 className="font-medium text-red-600 dark:text-red-400 flex items-center gap-2">
                     <div className="w-2 h-2 bg-red-500 rounded-full"></div>
-                    {leftSide.filter(line => line.type === 'removed').length} removals
+                    Original Text
                   </h4>
                   <Button
                     variant="outline"
                     size="sm"
-                    onClick={() => {
-                      const originalText = leftSide
-                        .filter(line => line.show)
-                        .map(line => line.content)
-                        .join('');
-                      navigator.clipboard.writeText(originalText);
-                    }}
+                    onClick={() => navigator.clipboard.writeText(originalText)}
                     className="h-6 text-xs"
                   >
                     <Copy className="h-3 w-3 mr-1" />
@@ -212,9 +243,7 @@ export function DiffChecker({ originalText, improvedText, title = "Text Comparis
                 </div>
                 <div className="p-4 border-2 border-red-200 dark:border-red-800 rounded-lg bg-red-50 dark:bg-red-900/10 min-h-[300px] font-mono">
                   <div className="whitespace-pre-wrap text-sm leading-relaxed">
-                    {leftSide.map((line, index) => 
-                      line.show ? renderDiffLine(line, index) : null
-                    )}
+                    {originalText}
                   </div>
                 </div>
               </div>
@@ -224,18 +253,12 @@ export function DiffChecker({ originalText, improvedText, title = "Text Comparis
                 <div className="flex items-center justify-between">
                   <h4 className="font-medium text-green-600 dark:text-green-400 flex items-center gap-2">
                     <div className="w-2 h-2 bg-green-500 rounded-full"></div>
-                    {rightSide.filter(line => line.type === 'added').length} additions
+                    Improved Text
                   </h4>
                   <Button
                     variant="outline"
                     size="sm"
-                    onClick={() => {
-                      const improvedText = rightSide
-                        .filter(line => line.show)
-                        .map(line => line.content)
-                        .join('');
-                      navigator.clipboard.writeText(improvedText);
-                    }}
+                    onClick={() => navigator.clipboard.writeText(improvedText)}
                     className="h-6 text-xs"
                   >
                     <Copy className="h-3 w-3 mr-1" />
@@ -244,9 +267,50 @@ export function DiffChecker({ originalText, improvedText, title = "Text Comparis
                 </div>
                 <div className="p-4 border-2 border-green-200 dark:border-green-800 rounded-lg bg-green-50 dark:bg-green-900/10 min-h-[300px] font-mono">
                   <div className="whitespace-pre-wrap text-sm leading-relaxed">
-                    {rightSide.map((line, index) => 
-                      line.show ? renderDiffLine(line, index) : null
-                    )}
+                    {(() => {
+                      const startTime = performance.now();
+                      
+                      // Check for extremely large texts and use fallback
+                      if (originalText.length > 100000 || improvedText.length > 100000) {
+                        const endTime = performance.now();
+                        console.log(`⚡ Large text fallback: ${(endTime - startTime).toFixed(2)}ms`);
+                        
+                        return (
+                          <div className="bg-yellow-100 dark:bg-yellow-900/30 text-yellow-800 dark:text-yellow-200 p-4 rounded">
+                            <p className="font-medium">⚡ Large Text Detected</p>
+                            <p className="text-sm mt-2">Text is too large for detailed comparison. Showing simplified view:</p>
+                            <div className="mt-4 p-2 bg-red-100 dark:bg-red-900/20 rounded">
+                              <span className="text-red-800 dark:text-red-200 font-medium">Different content detected</span>
+                            </div>
+                          </div>
+                        );
+                      }
+                      
+                      // Ultra-fast rendering for normal-sized texts
+                      const simpleDiff = getSimpleDiff(originalText, improvedText);
+                      
+                      const result = (
+                        <div>
+                          {simpleDiff.map((chunk, index) => (
+                            <span 
+                              key={index} 
+                              className={
+                                chunk.changed 
+                                  ? 'bg-red-100 dark:bg-red-900/30 text-red-800 dark:text-red-200 font-medium' 
+                                  : ''
+                              }
+                            >
+                              {chunk.text}
+                            </span>
+                          ))}
+                        </div>
+                      );
+                      
+                      const endTime = performance.now();
+                      console.log(`⚡ Ultra-fast rendering: ${(endTime - startTime).toFixed(2)}ms`);
+                      
+                      return result;
+                    })()}
                   </div>
                 </div>
               </div>

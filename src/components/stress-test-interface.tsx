@@ -553,7 +553,7 @@ export function StressTestInterface({
   };
 
   const handleTestRun = (testCase: TestCase) => {
-    onSendMessage(testCase.message, undefined);
+    onSendMessage(testCase.message);
   };
 
   const copyPromptToClipboard = async (prompt: SystemPrompt) => {

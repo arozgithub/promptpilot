@@ -95,8 +95,7 @@ const generatePromptFromDetailsFlow = ai.defineFlow(
     }
 
     const {output} = await generatePromptFromDetailsPrompt(input, {
-      model: 'googleai/gemini-2.5-flash',
-      media: mediaParts
+      model: 'googleai/gemini-2.5-flash'
     });
     return output!;
   }

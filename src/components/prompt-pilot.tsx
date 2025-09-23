@@ -120,7 +120,7 @@ export function PromptPilot({ onClearSelectedPrompt }: PromptPilotProps) {
         originalPrompt: '',
         improvedPrompt: '',
         context: analysisData.summary,
-        type: 'analysis',
+        type: 'analyzed',
         timestamp: analysisData.timestamp
       });
     }
@@ -193,7 +193,7 @@ export function PromptPilot({ onClearSelectedPrompt }: PromptPilotProps) {
               onPromptGenerated={handlePromptGenerated}
               onAnalyzeClick={handleAnalyzeClick}
               hasGeneratedPrompt={!!promptData.improvedPrompt}
-              initialData={loadedPromptData}
+              initialData={loadedPromptData ?? undefined}
             />
           </div>
         </TabsContent>
@@ -204,7 +204,7 @@ export function PromptPilot({ onClearSelectedPrompt }: PromptPilotProps) {
               onPromptImproved={handlePromptImproved}
               onAnalyzeClick={handleAnalyzeClick}
               hasImprovedPrompt={!!promptData.improvedPrompt}
-              initialData={loadedPromptData}
+              initialData={loadedPromptData ?? undefined}
             />
           </div>
         </TabsContent>
@@ -214,8 +214,8 @@ export function PromptPilot({ onClearSelectedPrompt }: PromptPilotProps) {
             <ComparePromptsForm 
               initialData={promptData}
               onDataChange={setPromptData}
-              promptData={loadedPromptData}
-              existingAnalysis={loadedAnalysis}
+              promptData={loadedPromptData ?? undefined}
+              existingAnalysis={loadedAnalysis ?? undefined}
             />
           </div>
         </TabsContent>
@@ -226,7 +226,7 @@ export function PromptPilot({ onClearSelectedPrompt }: PromptPilotProps) {
               onPromptRewritten={handlePromptRewritten}
               onAnalyzeClick={handleAnalyzeClick}
               hasRewrittenPrompt={!!promptData.improvedPrompt}
-              initialData={loadedPromptData}
+              initialData={loadedPromptData ?? undefined}
             />
           </div>
         </TabsContent>
@@ -237,7 +237,7 @@ export function PromptPilot({ onClearSelectedPrompt }: PromptPilotProps) {
               onPromptEvaluated={handlePromptEvaluated}
               onAnalyzeClick={handleAnalyzeClick}
               hasEvaluatedPrompt={!!promptData.improvedPrompt}
-              initialData={loadedPromptData}
+              initialData={loadedPromptData ?? undefined}
             />
           </div>
         </TabsContent>

@@ -1,11 +1,18 @@
 'use client';
 
-import React, { createContext, useContext, ReactNode } from 'react';
+import React, { createContext, useContext, ReactNode, useState, useEffect } from 'react';
 import { usePrompts } from '@/hooks/use-storage';
 import { useAnalyses } from '@/hooks/use-storage';
 import { usePreferences } from '@/hooks/use-storage';
 import { useFavorites } from '@/hooks/use-storage';
+import { 
+  versionStorage,
+  type PromptGroup,
+  type PromptVersion
+} from '@/lib/storage';
+import { supabasePromptService } from '@/lib/supabase-prompt-service';
 import { useStorageManager } from '@/hooks/use-storage';
+import { usePromptVersions } from '@/hooks/use-storage';
 
 interface StorageContextType {
   prompts: ReturnType<typeof usePrompts>;
@@ -13,6 +20,7 @@ interface StorageContextType {
   preferences: ReturnType<typeof usePreferences>;
   favorites: ReturnType<typeof useFavorites>;
   storageManager: ReturnType<typeof useStorageManager>;
+  versions: ReturnType<typeof usePromptVersions>;
 }
 
 const StorageContext = createContext<StorageContextType | undefined>(undefined);
@@ -27,6 +35,7 @@ export function StorageProvider({ children }: StorageProviderProps) {
   const preferences = usePreferences();
   const favorites = useFavorites();
   const storageManager = useStorageManager();
+  const versions = usePromptVersions();
 
   const value: StorageContextType = {
     prompts,
@@ -34,6 +43,7 @@ export function StorageProvider({ children }: StorageProviderProps) {
     preferences,
     favorites,
     storageManager,
+    versions,
   };
 
   return (

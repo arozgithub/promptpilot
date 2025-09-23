@@ -6,7 +6,7 @@ import { PromptPilot } from '@/components/prompt-pilot';
 import { ThemeToggle } from '@/components/theme-toggle';
 import { PromptTemplatesSidebar } from '@/components/prompt-templates-sidebar';
 import { Button } from '@/components/ui/button';
-import { Copy, Check, Play, FileText } from 'lucide-react';
+import { Copy, Check, Play, FileText, SplitSquareVertical } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import Link from 'next/link';
 
@@ -379,10 +379,37 @@ export default function Home() {
     setSelectedPrompt(template.id);
   };
 
+  const handleVersionSelect = (version: any, group: any) => {
+    // Create a temporary template-like object from the version
+    const templateFromVersion = {
+      id: version.id,
+      name: `${group.name} - ${version.name}`,
+      content: version.content,
+      description: version.description || `Version ${version.version} of ${group.name}`,
+      category: 'My Prompts'
+    };
+    setSelectedPrompt(templateFromVersion.id);
+    // Store the version content in a way that can be accessed
+    (window as any).versionContent = { [version.id]: version.content };
+    
+    toast({
+      title: 'Version Selected',
+      description: `Using ${group.name} - ${version.name}`,
+    });
+  };
+
   const handleCopyPrompt = async () => {
+    let promptContent = '';
+    
     if (selectedPrompt && promptData[selectedPrompt as keyof typeof promptData]) {
+      promptContent = promptData[selectedPrompt as keyof typeof promptData];
+    } else if (selectedPrompt && (window as any).versionContent && (window as any).versionContent[selectedPrompt]) {
+      promptContent = (window as any).versionContent[selectedPrompt];
+    }
+    
+    if (promptContent) {
       try {
-        await navigator.clipboard.writeText(promptData[selectedPrompt as keyof typeof promptData]);
+        await navigator.clipboard.writeText(promptContent);
         setCopied(true);
         toast({
           title: "Copied!",
@@ -414,36 +441,30 @@ export default function Home() {
   };
 
   return (
-    <div className="bg-background flex flex-col flex-1 min-h-0">
-      {/* Header */}
-      <header className="sticky top-0 z-50 bg-background/80 backdrop-blur-md border-b border-border/50 flex-shrink-0">
-        <div className="flex items-center justify-between px-4 py-1.5">
-          <div className="flex items-center gap-3">
-            <Button
-              variant="ghost"
-              size="sm"
-              onClick={() => setShowTemplates(!showTemplates)}
-              className="gap-1 text-xs h-7"
-            >
-              <FileText className="h-3 w-3" />
-              <span className="font-medium">Templates</span>
-            </Button>
-            <div className="h-3 w-px bg-border" />
-            <div className="flex items-baseline gap-2">
-              <h1 className="text-xl md:text-2xl font-headline font-bold text-foreground tracking-tight bg-gradient-to-r from-foreground to-primary bg-clip-text text-transparent">
-                PromptPilot
-              </h1>
-              <Logo />
+    <div className="min-h-screen bg-background">
+      {/* Simple Header */}
+      <header className="border-b">
+        <div className="max-w-7xl mx-auto px-4 py-4">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              <Logo className="w-8 h-8" />
+              <span className="text-2xl font-bold">PromptPilot</span>
             </div>
-          </div>
-          <div className="flex items-center gap-1">
-            <Link href="/playground">
-              <Button variant="outline" size="sm" className="gap-1 text-xs h-7">
-                <Play className="h-3 w-3" />
-                <span className="font-medium">Playground</span>
-              </Button>
-            </Link>
-            <ThemeToggle />
+            <div className="flex items-center gap-4">
+              <Link href="/playground">
+                <Button variant="ghost" size="sm" className="gap-2">
+                  <Play className="h-4 w-4" />
+                  Playground
+                </Button>
+              </Link>
+              <Link href="/ab-testing">
+                <Button variant="ghost" size="sm" className="gap-2">
+                  <SplitSquareVertical className="h-4 w-4" />
+                  A/B Testing
+                </Button>
+              </Link>
+              <ThemeToggle />
+            </div>
           </div>
         </div>
       </header>
@@ -455,30 +476,33 @@ export default function Home() {
           isOpen={showTemplates}
           onToggle={() => setShowTemplates(!showTemplates)}
           onSelectTemplate={handlePromptSelect}
+          onSelectVersion={handleVersionSelect}
           promptData={promptData}
         />
 
         {/* Main Content Area */}
         <div className="flex-1 flex flex-col min-w-0">
-          <div className="flex-1 p-2 md:p-3 overflow-auto">
-            <div className="max-w-4xl mx-auto space-y-6">
+          <div className="flex-1 p-4 md:p-6 overflow-auto">
+            <div className="max-w-5xl mx-auto space-y-8">
               {selectedPrompt && (
-                <div className="space-y-3">
+                <div className="space-y-4">
                   <div className="flex items-center justify-between">
-                    <h3 className="text-base font-semibold">Selected Prompt</h3>
+                    <h3 className="text-lg font-semibold">Selected Prompt</h3>
                     <Button
                       onClick={handleCopyPrompt}
                       variant="outline"
                       size="sm"
-                      className="gap-2 text-xs h-6"
+                      className="gap-2"
                     >
-                      {copied ? <Check className="h-3 w-3" /> : <Copy className="h-3 w-3" />}
+                      {copied ? <Check className="h-4 w-4" /> : <Copy className="h-4 w-4" />}
                       {copied ? 'Copied!' : 'Copy Prompt'}
                     </Button>
                   </div>
-                  <div className="bg-muted/50 rounded-lg p-3 max-h-80 overflow-y-auto">
-                    <pre className="text-xs whitespace-pre-wrap font-mono">
-                      {promptData[selectedPrompt as keyof typeof promptData]}
+                  <div className="bg-muted rounded-lg p-4 max-h-80 overflow-y-auto border">
+                    <pre className="text-sm whitespace-pre-wrap font-mono">
+                      {promptData[selectedPrompt as keyof typeof promptData] || 
+                       ((window as any).versionContent && (window as any).versionContent[selectedPrompt]) ||
+                       'No prompt content available'}
                     </pre>
                   </div>
                 </div>

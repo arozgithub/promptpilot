@@ -17,6 +17,12 @@ const EnhancePromptWithJoblogicKnowledgeInputSchema = z.object({
 });
 export type EnhancePromptWithJoblogicKnowledgeInput = z.infer<typeof EnhancePromptWithJoblogicKnowledgeInputSchema>;
 
+// Internal schema for the prompt that includes knowledge
+const EnhancePromptWithKnowledgeSchema = z.object({
+  prompt: z.string().describe('The prompt to enhance.'),
+  knowledge: z.string().optional().describe('Relevant Joblogic knowledge.'),
+});
+
 const EnhancePromptWithJoblogicKnowledgeOutputSchema = z.object({
   enhancedPrompt: z.string().describe('The enhanced prompt with Joblogic knowledge.'),
 });
@@ -30,7 +36,7 @@ export async function enhancePromptWithJoblogicKnowledge(
 
 const enhancePromptWithJoblogicKnowledgePrompt = ai.definePrompt({
   name: 'enhancePromptWithJoblogicKnowledgePrompt',
-  input: {schema: EnhancePromptWithJoblogicKnowledgeInputSchema},
+  input: {schema: EnhancePromptWithKnowledgeSchema},
   output: {schema: EnhancePromptWithJoblogicKnowledgeOutputSchema},
   prompt: `You are an expert prompt engineer specializing in Joblogic.  A prompt was provided by the user, and your job is to enhance it with information from the Joblogic knowledge base.
 
@@ -54,10 +60,11 @@ const enhancePromptWithJoblogicKnowledgeFlow = ai.defineFlow(
   },
   async input => {
     const knowledge = await getRelevantJoblogicKnowledge(input.prompt);
-    const {output} = await enhancePromptWithJoblogicKnowledgePrompt({
-      ...input,
-      knowledge,
-    }, {
+    const promptInput = {
+      prompt: input.prompt,
+      knowledge: knowledge
+    };
+    const {output} = await enhancePromptWithJoblogicKnowledgePrompt(promptInput, {
       model: 'googleai/gemini-2.5-flash'
     });
     return {enhancedPrompt: output!.enhancedPrompt}; // Corrected to return the enhancedPrompt

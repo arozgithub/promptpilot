@@ -43,7 +43,7 @@ export function RewritePromptForm({
   const [isLoading, setIsLoading] = useState(false);
   const [standaloneQuestion, setStandaloneQuestion] = useState<string | null>(null);
   const { toast } = useToast();
-  const { prompts } = useStorage();
+  const { prompts, versions } = useStorage();
 
   const form = useForm<z.infer<typeof formSchema>>({
     resolver: zodResolver(formSchema),
@@ -82,7 +82,51 @@ export function RewritePromptForm({
       } else if (result.data) {
         setStandaloneQuestion(result.data);
         
-        // Save to local storage
+        // Create version or new group for rewritten prompt
+        const groupName = `Rewritten Prompt ${new Date().toLocaleDateString()}`;
+        const existingGroups = versions.promptGroups.filter(g => 
+          g.versions.some(v => v.content === values.followUpQuestion)
+        );
+        
+        if (existingGroups.length > 0) {
+          // Add as new version to existing group
+          const group = existingGroups[0];
+          const newVersion = versions.addVersion(group.id, result.data, {
+            name: `v${group.versions.length + 1}.0 (Rewritten)`,
+            description: 'Standalone question from chat context',
+            status: 'draft',
+            createdFrom: {
+              type: 'rewritten',
+              sourceData: {
+                chatHistory: values.chatHistory,
+                originalQuestion: values.followUpQuestion
+              }
+            }
+          });
+          
+          if (newVersion) {
+            toast({
+              title: 'New Version Created',
+              description: `Created ${newVersion.name} for "${group.name}"`,
+            });
+          }
+        } else {
+          // Create new prompt group
+          const group = await versions.createPromptGroup(
+            groupName,
+            result.data,
+            'Rewritten as standalone question from chat context'
+          );
+          
+          if (group) {
+            toast({
+              title: 'Prompt Created',
+              description: `Created new prompt group "${group.name}"`,
+            });
+          }
+        }
+        
+        // Also save to legacy prompt storage for backward compatibility
         const promptData: Omit<PromptData, 'id' | 'timestamp'> = {
           originalPrompt: values.followUpQuestion,
           improvedPrompt: result.data,

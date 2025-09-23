@@ -5,12 +5,13 @@ import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { useToast } from '@/hooks/use-toast';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Progress } from '@/components/ui/progress';
 import { Separator } from '@/components/ui/separator';
 import { Alert, AlertDescription } from '@/components/ui/alert';
-import { Loader2, TrendingUp, Target, CheckCircle, Lightbulb, BarChart3, Play } from 'lucide-react';
+import { Loader2, TrendingUp, Target, CheckCircle, Lightbulb, BarChart3, Play, GitBranch } from 'lucide-react';
 import { comparePrompts } from '@/ai/flows/compare-prompts';
 import { FileUpload } from './file-upload';
 import { DiffChecker } from './diff-checker';
@@ -67,7 +68,9 @@ export function ComparePromptsForm({ initialData, onDataChange, promptData, exis
     recommendations: existingAnalysis.recommendations
   } : null);
   const [error, setError] = useState<string | null>(null);
-  const { prompts, analyses } = useStorage();
+  const [isSavingToVersions, setIsSavingToVersions] = useState(false);
+  const { prompts, analyses, versions } = useStorage();
+  const { toast } = useToast();
 
   // Auto-populate when initial data changes
   React.useEffect(() => {
@@ -181,6 +184,94 @@ export function ComparePromptsForm({ initialData, onDataChange, promptData, exis
       console.error('Comparison error:', err);
     } finally {
       setIsLoading(false);
+    }
+  };
+
+  const handleSaveToVersionControl = async () => {
+    if (!originalPrompt.trim() || !improvedPrompt.trim()) {
+      setError('Please provide both original and improved prompts before saving to version control.');
+      return;
+    }
+
+    setIsSavingToVersions(true);
+
+    try {
+      let groupName = `Comparison Analysis ${new Date().toLocaleDateString()}`;
+      
+      // Check if we should create a new version or new group
+      const existingGroups = versions.promptGroups.filter(g => 
+        g.versions.some(v => v.content === originalPrompt.trim())
+      );
+      
+      if (existingGroups.length > 0) {
+        // Add as new version to existing group
+        const group = existingGroups[0];
+        const newVersion = versions.addVersion(group.id, improvedPrompt.trim(), {
+          name: `v${group.versions.length + 1}.0 (Compared)`,
+          description: `Compared and analyzed version${context ? ': ' + context : ''}`,
+          status: 'current', // Set as current to make it active
+          createdFrom: {
+            type: 'manual',
+            sourceData: {
+              originalPrompt: originalPrompt.trim(),
+              improvedPrompt: improvedPrompt.trim(),
+              context: context.trim() || undefined,
+              analysis: result || undefined
+            }
+          }
+        });
+        
+        if (newVersion) {
+          setError(null);
+          toast({
+            title: 'Saved to Version Control',
+            description: `Created ${newVersion.name} for "${group.name}"`,
+          });
+        }
+      } else {
+        // Create new prompt group with original version first
+        const group = await versions.createPromptGroup(
+          groupName,
+          originalPrompt.trim(), // Original prompt as the first version
+          `Original prompt before comparison analysis`
+        );
+        
+        if (group) {
+          // Now add the improved version as the second version
+          const improvedVersion = versions.addVersion(group.id, improvedPrompt.trim(), {
+            name: 'v2.0 (Compared)',
+            description: `Compared and analyzed version${context ? ': ' + context : ''}`,
+            status: 'current', // Mark this as current version
+            createdFrom: {
+              type: 'manual',
+              sourceData: {
+                originalPrompt: originalPrompt.trim(),
+                improvedPrompt: improvedPrompt.trim(),
+                context: context.trim() || undefined,
+                analysis: result || undefined
+              }
+            }
+          });
+          
+          if (improvedVersion) {
+            setError(null);
+            toast({
+              title: 'Version Control Group Created',
+              description: `Created "${group.name}" with compared version`,
+            });
+          }
+        }
+      }
+    } catch (error) {
+      setError('Failed to save to version control. Please try again.');
+      console.error('Version control save error:', error);
+      toast({
+        variant: 'destructive',
+        title: 'Error',
+        description: 'Failed to save to version control. Please try again.',
+      });
+    } finally {
+      setIsSavingToVersions(false);
     }
   };
 
@@ -472,6 +563,19 @@ export function ComparePromptsForm({ initialData, onDataChange, promptData, exis
                     </Button>
                   </Link>
                   
+                  <Button 
+                    type="button" 
+                    onClick={handleSaveToVersionControl}
+                    disabled={isSavingToVersions}
+                    className="gap-2 border border-primary"
+                  >
+                    {isSavingToVersions ? (
+                      <Loader2 className="h-4 w-4 animate-spin" />
+                    ) : (
+                      <GitBranch className="h-4 w-4" />
+                    )}
+                    {isSavingToVersions ? 'Saving...' : 'Save to Versions'}
+                  </Button>
                 </div>
                 
                 <div className="text-xs text-muted-foreground">

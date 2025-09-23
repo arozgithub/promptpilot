@@ -5,7 +5,7 @@ import { useState, useEffect } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
-import { LoaderCircle, Wand2, BarChart3, Play, Undo2 } from 'lucide-react';
+import { LoaderCircle, Wand2, BarChart3, Play, Undo2, GitBranch, Save } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import {
   Form,
@@ -49,8 +49,9 @@ export function ImprovePromptForm({
   const [improvedPrompt, setImprovedPrompt] = useState<string | null>(null);
   const [uploadedFiles, setUploadedFiles] = useState<File[]>([]);
   const [isAutoPopulated, setIsAutoPopulated] = useState(false);
+  const [isSavingToVersions, setIsSavingToVersions] = useState(false);
   const { toast } = useToast();
-  const { prompts } = useStorage();
+  const { prompts, versions } = useStorage();
 
   const form = useForm<z.infer<typeof formSchema>>({
     resolver: zodResolver(formSchema),
@@ -87,6 +88,101 @@ export function ImprovePromptForm({
     setIsAutoPopulated(false);
   };
 
+  const handleSaveToVersionControl = async () => {
+    if (!improvedPrompt) {
+      toast({
+        variant: 'destructive',
+        title: 'Error',
+        description: 'No improved prompt to save.',
+      });
+      return;
+    }
+
+    setIsSavingToVersions(true);
+
+    try {
+      const values = form.getValues();
+      let groupName = `Prompt ${new Date().toLocaleDateString()}`;
+      
+      // Check if this is an improvement of an existing prompt
+      if (initialData?.originalPrompt) {
+        const groups = prompts.prompts.filter(p => p.originalPrompt === values.existingPrompt);
+        if (groups.length > 0) {
+          groupName = `Improved ${groups[0].type} Prompt`;
+        }
+      }
+      
+      // First check for groups that already have the original prompt as a version
+      const existingGroups = versions.promptGroups.filter(g => 
+        g.versions.some(v => v.content === values.existingPrompt)
+      );
+      
+      if (existingGroups.length > 0) {
+        // Add as new version to existing group
+        const group = existingGroups[0];
+        const newVersion = versions.addVersion(group.id, improvedPrompt, {
+          name: `v${group.versions.length + 1}.0 (Improved)`,
+          description: `Improved version: ${values.expectedChanges}`,
+          status: 'draft',
+          createdFrom: {
+            type: 'improved',
+            sourceData: {
+              problemDescription: values.problemDescription,
+              expectedChanges: values.expectedChanges,
+              originalPrompt: values.existingPrompt
+            }
+          }
+        });
+        
+        if (newVersion) {
+          toast({
+            title: 'Saved to Version Control',
+            description: `Created ${newVersion.name} for "${group.name}"`,
+          });
+        }
+      } else {
+        // Create new prompt group with original version first
+        const group = await versions.createPromptGroup(
+          groupName,
+          values.existingPrompt, // Original prompt as the first version
+          `Original prompt before improvements`
+        );
+        
+        if (group) {
+          // Now add the improved version as the second version
+          const improvedVersion = versions.addVersion(group.id, improvedPrompt, {
+            name: 'v2.0 (Improved)',
+            description: `Improved version: ${values.expectedChanges}`,
+            status: 'current', // Mark this as current (but keep the original one)
+            createdFrom: {
+              type: 'improved',
+              sourceData: {
+                problemDescription: values.problemDescription,
+                expectedChanges: values.expectedChanges,
+                originalPrompt: values.existingPrompt
+              }
+            }
+          });
+          
+          if (improvedVersion) {
+            toast({
+              title: 'Version Control Group Created',
+              description: `Created "${group.name}" with improved version`,
+            });
+          }
+        }
+      }
+    } catch (error) {
+      toast({
+        variant: 'destructive',
+        title: 'Error',
+        description: 'Failed to save to version control. Please try again.',
+      });
+    } finally {
+      setIsSavingToVersions(false);
+    }
+  };
+
   async function onSubmit(values: z.infer<typeof formSchema>) {
     setIsLoading(true);
     setImprovedPrompt(null);
@@ -113,7 +209,10 @@ export function ImprovePromptForm({
       } else if (result.data) {
         setImprovedPrompt(result.data);
         
-        // Save to local storage
+        // Just store in legacy prompt storage for backward compatibility
+        // Do NOT automatically create versions - let user use the "Save to Versions" button
+        
+        // Save to legacy prompt storage for backward compatibility
         const promptData: Omit<PromptData, 'id' | 'timestamp'> = {
           originalPrompt: values.existingPrompt,
           improvedPrompt: result.data,
@@ -262,6 +361,21 @@ export function ImprovePromptForm({
                   Launch Playground
                 </Button>
               </Link>
+              
+              <Button 
+                type="button" 
+                variant="secondary" 
+                onClick={handleSaveToVersionControl}
+                disabled={isSavingToVersions}
+                className="gap-2"
+              >
+                {isSavingToVersions ? (
+                  <LoaderCircle className="h-4 w-4 animate-spin" />
+                ) : (
+                  <GitBranch className="h-4 w-4" />
+                )}
+                {isSavingToVersions ? 'Saving...' : 'Save to Versions'}
+              </Button>
               
               {hasImprovedPrompt && onAnalyzeClick && (
                 <Button 
