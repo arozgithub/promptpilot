@@ -108,13 +108,8 @@ export class SupabasePromptService {
   }
 
   // Create a new prompt group
-  async createGroup(name: string, initialContent: string, description?: string, options?: { skipInitialVersion?: boolean }): Promise<PromptGroup | null> {
-    console.log('🎯 createGroup called with:', { 
-      name, 
-      initialContent: initialContent.substring(0, 50), 
-      description,
-      skipInitialVersion: options?.skipInitialVersion
-    });
+  async createGroup(name: string, initialContent: string, description?: string): Promise<PromptGroup | null> {
+    console.log('🎯 createGroup called with:', { name, initialContent: initialContent.substring(0, 50), description });
     try {
       // Create the group with actual available fields
       // Use initialContent (the prompt text) as the description for the group
@@ -139,41 +134,34 @@ export class SupabasePromptService {
       console.log('✅ Group created successfully:', group);
       console.log('📝 Prompt text stored in description field (length:', initialContent.length, 'chars)');
 
-      let version;
-      
-      // Create the initial version only if not skipped
-      if (!options?.skipInitialVersion) {
-        console.log('📝 Creating initial version...');
-        const { data: versionData, error: versionError } = await supabase
-          .from('prompt_versions')
-          .insert({
-            group_id: group.id,
-            name: `${name} v1`,
-            content: initialContent,
-            status: 'current', // Set as current version
-            version_number: 1,
-            description: 'Initial version',
-            parent_version_id: null,
-            author_notes: null,
-            performance_score: 0.0,
-            usage_count: 0,
-            is_archived: false
-          })
-          .select()
-          .single();
+      // Create the initial version with all available fields
+      console.log('📝 Creating initial version...');
+      const { data: version, error: versionError } = await supabase
+        .from('prompt_versions')
+        .insert({
+          group_id: group.id,
+          name: `${name} v1`,
+          content: initialContent,
+          status: 'current', // Set as current version
+          version_number: 1,
+          description: 'Initial version',
+          parent_version_id: null,
+          author_notes: null,
+          performance_score: 0.0,
+          usage_count: 0,
+          is_archived: false
+        })
+        .select()
+        .single();
 
-        if (versionError) {
-          console.error('❌ Version creation error:', versionError);
-          throw versionError;
-        }
-
-        console.log('✅ Version created successfully:', versionData);
-        version = versionData;
-      } else {
-        console.log('⏭️ Skipping initial version creation as requested');
+      if (versionError) {
+        console.error('❌ Version creation error:', versionError);
+        throw versionError;
       }
 
-      const result = this.convertGroupToLocal(group, version ? [version] : []);
+      console.log('✅ Version created successfully:', version);
+
+      const result = this.convertGroupToLocal(group, [version]);
       console.log('🔄 Converted to local format:', result);
       return result;
     } catch (error) {
@@ -184,11 +172,6 @@ export class SupabasePromptService {
 
   // Add a new version to a group
   async addVersion(groupId: string, name: string, content: string): Promise<PromptVersion | null> {
-    console.log('🎯 addVersion called with:', { 
-      groupId, 
-      name, 
-      contentPreview: content.substring(0, 50)
-    });
     try {
       // Get the current highest version number for this group
       const { data: existingVersions, error: versionError } = await supabase
@@ -199,14 +182,9 @@ export class SupabasePromptService {
         .limit(1);
 
       if (versionError) throw versionError;
-      
-      console.log('✅ Found existingVersions:', existingVersions);
 
       const nextVersionNumber = existingVersions.length > 0 ? existingVersions[0].version_number + 1 : 1;
       const versionName = name || `Version ${nextVersionNumber}`;
-      
-      console.log('📝 Creating version with number:', nextVersionNumber);
-      console.log('📝 Version name:', versionName);
 
       // Create the version with all available fields
       const { data: version, error: insertError } = await supabase
@@ -227,12 +205,7 @@ export class SupabasePromptService {
         .select()
         .single();
 
-      if (insertError) {
-        console.error('❌ Version insertion error:', insertError);
-        throw insertError;
-      }
-      
-      console.log('✅ Successfully created version:', version);
+      if (insertError) throw insertError;
 
       return {
         id: version.id,
